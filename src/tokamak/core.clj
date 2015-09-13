@@ -1,8 +1,5 @@
 (ns tokamak.core
-  (:require [tokamak.multi :as multi])
   (:refer-clojure :exclude [+ * compile vector]))
-
-(def ^:dynamic *default-backend* :core-matrix)
 
 (defn- genkey []
   (keyword (gensym "V__")))
@@ -25,6 +22,11 @@
                       args)]
     (variable name {:name name :kind :op :op op :args op-args} graph)))
 
+(defn- get-node
+  ([v]
+   (get-node v (:name v)))
+  ([v k]
+   (get (:graph v) k)))
 
 ;; Public API
 
@@ -67,28 +69,16 @@
    :ret (:name ret)
    :graph (:graph ret)})
 
-;; TODO: add support for given, updates and shared
-(defn compile
-  ([function]
-   (compile {:backend *default-backend*} function))
-  ([backend function]
-   (let [compiled-fn (multi/compile backend function)
-         arg-names (:args function)]
-     (fn [& args]
-       (compiled-fn (apply hash-map (interleave arg-names args)))))))
-
-
 ;; Operations
 
-(defn +
-  [& args]
+;; TODO: create macros
+
+(defn + [& args]
   (operation :+ args))
 
-(defn *
-  [& args]
+(defn * [& args]
   (operation :* args))
 
-(defn exp
-  [arg]
+(defn exp [arg]
   (operation :exp [arg]))
 

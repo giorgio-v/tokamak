@@ -1,9 +1,10 @@
 (ns tokamak.core-test
   (:require [clojure.test :refer :all]
             [clojure.pprint :refer [pprint]]
+            [clojure.core.matrix :as m]
             [tokamak.core :as t]
-            [tokamak.graph :as graph]
-            [tokamak.backends.core-matrix]))
+            [tokamak.backends.core-matrix :as b])
+  (:refer-clojure :exclude [compile]))
 
 (deftest a-test
   (testing "FIXME, I fail."
@@ -13,9 +14,8 @@
 (defn run-1 []
   (let [a (t/tensor :int64 2 :a)
         b (t/tensor :int64 2 :b)
-        f (t/function [a b] (t/+ a b))]
-    (pprint (t/+ a b))
-    (t/compile {:backend :core-matrix} f)))
+        f (b/compile (t/function [a b] (t/exp (t/+ a b))))]
+    (pprint (f (m/array [[1 1] [1 1]]) (m/array [[1 1] [1 1]])))))
 
 (defn run-2 []
 
@@ -26,10 +26,6 @@
         d (t/+ a e)]
     (pprint (t/* a c 2 (t/exp d)))
 
-    (let [z (t/* a c 2 (t/exp d))]
-      (pprint z)
-      (pprint (graph/forward-edges (:graph z)))
-      (pprint (graph/compute-stack (:graph z) (:name z))))
-    (t/compile (t/function [a b] d))
+    (b/compile (t/function [a b] d))
 
     ))

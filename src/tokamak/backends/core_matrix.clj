@@ -1,40 +1,49 @@
 (ns tokamak.backends.core-matrix
-  (:require [tokamak.multi :refer :all]
+  (:require [clojure.set :as s]
+            [clojure.core.matrix :as m]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [compile]))
 
-(defmulti compile-op (fn [op _] op))
+(defn- keyword->symbol [k]
+  (symbol (name k)))
 
-(defmethod compile-op :+
-  [_ v]
-  #_(fn [args] (apply m/add args))
-  `(apply m/add (:args v)))
+(defn- args->vars [v]
+  (map keyword->symbol (:args v)))
 
-(defmethod compile-op :*
-  [_ v]
-  `(apply m/mul (:args v)))
+(defmulti compile* (fn [v] (or (:op v) (:kind v))))
 
-(defmethod compile-op :exp
-  [_ v]
-  `(m/emap #(Math/exp %) (:args v)))
+(defmethod compile* :+
+  [v]
+  `(m/add ~@(args->vars v)))
 
+(defmethod compile* :*
+  [v]
+  `(m/mul ~@(args->vars v)))
 
-(defmethod compile :core-matrix
-  [_ function]
-  (let [;;inputs (filter (fn [[_ v]] (= (:kind v) :variable)) graph)
-        stack (graph/compute-stack (:graph function) (:ret function))]
-    ;; here it would be good to compile to quoted clojure code and eval
-    ;; just to prove we can emit efficient code, instead of reducing (see below)
-    ;; Using stack, we can essentially construct a series of quoted single assignment
-    ;; statements, embed them in a let form and return the last value. That easy.
-    ;; In the let form we can safely use the pre-generated gensyms, since we know it's
-    ;; going to be the only content and we don't use any other gensym
-    (fn [kv]
-      #_(reduce
-         (fn [out name]
-           (if-let [input (get kv name)]
-             (assoc out name input)
-             (assoc out name (compile-op ))))
-         {}
-         stack))))
+(defmethod compile* :exp
+  [v]
+  `(m/emap #(Math/exp %) ~@(args->vars v)))
+
+(defmethod compile* :variable
+  [v]
+  (throw (Exception. (str "Unable to resolve symbol: "
+                          (name (:name v))))))
+
+(defn compile
+  ;; opts is for backend-specific options
+  [{:keys [graph ret args given]} & [opts]]
+  (let [path (->> (graph/backward-path graph ret)
+                   (filter (comp not (into #{} (concat args (keys given))))))
+        fn-form `(fn [{:keys ~(vec (map keyword->symbol args))}]
+                   (let ~(vec
+                          (concat
+                           (mapcat (juxt (comp keyword->symbol key) val) given)
+                           (interleave (map keyword->symbol path)
+                                       (->> path (map graph) (map compile*)))))
+                     ~(keyword->symbol ret)))
+        compiled-fn (eval fn-form)]
+    ;; TODO: possibly avoid this outer function, just build the args
+    ;; thing into the inner one
+    (fn [& fn-args]
+      (compiled-fn (apply hash-map (interleave args fn-args))))))
 

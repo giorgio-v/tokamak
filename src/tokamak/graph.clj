@@ -14,12 +14,15 @@
            out
            (:args v))) {})))
 
-(defn compute-stack
-  [graph back-from]
+;; TODO: instead of producing a list, produce a list of lists,
+;; where the inner lists are all the vars that can be evaluated
+;; in parallel
+(defn backward-path
+  [graph output-node]
   (let [fwd-edges (forward-edges graph)]
-    (loop [stack []
+    (loop [path []
            visited #{}
-           nodes #{back-from}]
+           nodes #{output-node}]
       (let [args (->> (map graph nodes)
                       (map :args)
                       flatten
@@ -32,10 +35,10 @@
                          nodes)
             new-identities (filter keyword? (map graph new-visited))
             new-visited (concat new-visited new-identities)
-            new-stack (concat stack new-visited)]
+            new-path (concat path new-visited)]
         (if (empty? args)
-          (reverse new-stack)
-          (recur new-stack
+          (reverse new-path)
+          (recur new-path
                  (apply conj visited new-visited)
                  (apply conj (s/difference nodes new-visited) args)))))))
 
