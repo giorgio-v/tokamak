@@ -1,5 +1,5 @@
 (ns tokamak.core
-  (:refer-clojure :exclude [+ * compile vector]))
+  (:refer-clojure :exclude [+ * vector]))
 
 (defn- genkey []
   (keyword (gensym "V__")))
@@ -70,8 +70,6 @@
    :graph (:graph ret)})
 
 ;; Operations
-
-;; TODO: create macros
 
 (defn + [& args]
   (operation :+ args))

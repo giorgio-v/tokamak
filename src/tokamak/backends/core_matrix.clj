@@ -1,6 +1,5 @@
 (ns tokamak.backends.core-matrix
-  (:require [clojure.set :as s]
-            [clojure.core.matrix :as m]
+  (:require [clojure.core.matrix :as m]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [compile]))
 
