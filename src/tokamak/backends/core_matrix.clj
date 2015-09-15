@@ -7,15 +7,15 @@
   (symbol (name k)))
 
 (defn- args->vars [v]
-  (map keyword->symbol (:args v)))
+  (map #(if (keyword? %) (keyword->symbol %) %) (:args v)))
 
 (defmulti compile* (fn [v] (or (:op v) (:kind v))))
 
-(defmethod compile* :+
+(defmethod compile* :add
   [v]
   `(m/add ~@(args->vars v)))
 
-(defmethod compile* :*
+(defmethod compile* :mul
   [v]
   `(m/mul ~@(args->vars v)))
 
@@ -31,8 +31,8 @@
 (defn compile
   ;; opts is for backend-specific options
   [{:keys [graph ret args given]} & [opts]]
-  (let [path (->> (graph/backward-path graph ret)
-                   (filter (comp not (into #{} (concat args (keys given))))))
+  (let [path (->> (graph/backtrack graph ret)
+                  (filter (comp not (into #{} (concat args (keys given))))))
         fn-form `(fn [{:keys ~(vec (map keyword->symbol args))}]
                    (let ~(vec
                           (concat

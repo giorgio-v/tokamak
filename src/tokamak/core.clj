@@ -1,5 +1,5 @@
 (ns tokamak.core
-  (:refer-clojure :exclude [+ * vector]))
+  (:refer-clojure :exclude [vector]))
 
 (defn- genkey []
   (keyword (gensym "V__")))
@@ -71,11 +71,11 @@
 
 ;; Operations
 
-(defn + [& args]
-  (operation :+ args))
+(defn add [& args]
+  (operation :add args))
 
-(defn * [& args]
-  (operation :* args))
+(defn mul [& args]
+  (operation :mul args))
 
 (defn exp [arg]
   (operation :exp [arg]))

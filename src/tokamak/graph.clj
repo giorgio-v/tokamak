@@ -17,7 +17,7 @@
 ;; TODO: instead of producing a list, produce a list of lists,
 ;; where the inner lists are all the vars that can be evaluated
 ;; in parallel
-(defn backward-path
+(defn backtrack
   [graph output-node]
   (let [fwd-edges (forward-edges graph)]
     (loop [path []
