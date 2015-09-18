@@ -9,21 +9,9 @@
 (defn- args->vars [v]
   (map #(if (keyword? %) (keyword->symbol %) %) (:args v)))
 
-(defmulti compile* (fn [v] (or (:op v) (:kind v))))
+(defmulti compile* (fn [v] (or (:op v) (:type v))))
 
-(defmethod compile* :add
-  [v]
-  `(m/add ~@(args->vars v)))
-
-(defmethod compile* :mul
-  [v]
-  `(m/mul ~@(args->vars v)))
-
-(defmethod compile* :exp
-  [v]
-  `(m/emap #(Math/exp %) ~@(args->vars v)))
-
-(defmethod compile* :variable
+(defmethod compile* :tensor
   [v]
   (throw (Exception. (str "Unable to resolve symbol: "
                           (name (:name v))))))
@@ -39,10 +27,35 @@
                            (mapcat (juxt (comp keyword->symbol key) val) given)
                            (interleave (map keyword->symbol path)
                                        (->> path (map graph) (map compile*)))))
+                     ;; Add updates to memory atom before returning
                      ~(keyword->symbol ret)))
+        _ (clojure.pprint/pprint fn-form)
         compiled-fn (eval fn-form)]
     ;; TODO: possibly avoid this outer function, just build the args
     ;; thing into the inner one
     (fn [& fn-args]
       (compiled-fn (apply hash-map (interleave args fn-args))))))
 
+(defmethod compile* :alias
+  [v]
+  (keyword->symbol (first (:args v))))
+
+(defmethod compile* :add
+  [v]
+  `(m/add ~@(args->vars v)))
+
+(defmethod compile* :mul
+  [v]
+  `(m/mul ~@(args->vars v)))
+
+(defmethod compile* :exp
+  [v]
+  `(m/emap #(Math/exp %) ~@(args->vars v)))
+
+(defmethod compile* :ones
+  [v]
+  `(m/fill ~@(args->vars v) 1.0))
+
+(defmethod compile* :zeros
+  [v]
+  `(m/fill ~@(args->vars v) 0.0))

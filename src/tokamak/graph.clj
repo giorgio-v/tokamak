@@ -5,7 +5,7 @@
   [graph]
   (->> graph
        (map val)
-       (filter #(= (:kind %) :op))
+       (filter #(= (:type %) :op))
        (reduce
         (fn [out v]
           (reduce
@@ -14,15 +14,39 @@
            out
            (:args v))) {})))
 
+
+(defn reach
+  [graph from]
+  (let [fwd-edges (forward-edges graph)]
+    (loop [reached #{}
+           nodes #{from}]
+      (let [args (->> (map graph nodes)
+                      (map :args)
+                      flatten
+                      (filter identity)
+                      (filter keyword?)
+                      (into #{}))
+            args (s/difference args reached)
+            reached (apply conj reached nodes)]
+        (if (empty? args)
+          reached
+          (recur reached args))))))
+
+(defn clean
+  [graph from]
+  (let [reached (reach graph from)]
+    (into {} (filter (comp reached key) graph))))
+
 ;; TODO: instead of producing a list, produce a list of lists,
 ;; where the inner lists are all the vars that can be evaluated
 ;; in parallel
 (defn backtrack
-  [graph output-node]
-  (let [fwd-edges (forward-edges graph)]
+  [graph from]
+  (let [graph (clean graph from)
+        fwd-edges (forward-edges graph)]
     (loop [path []
            visited #{}
-           nodes #{output-node}]
+           nodes #{from}]
       (let [args (->> (map graph nodes)
                       (map :args)
                       flatten
@@ -31,10 +55,8 @@
                       (into #{}))
             args (s/difference args visited)
             new-visited (filter
-                         (fn [n] (every? visited (get fwd-edges n)))
+                         (fn [node] (every? visited (get fwd-edges node)))
                          nodes)
-            new-identities (filter keyword? (map graph new-visited))
-            new-visited (concat new-visited new-identities)
             new-path (concat path new-visited)]
         (if (empty? args)
           (reverse new-path)

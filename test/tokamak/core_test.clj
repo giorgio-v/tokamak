@@ -3,6 +3,7 @@
             [clojure.pprint :refer [pprint]]
             [clojure.core.matrix :as m]
             [tokamak.core :as t]
+            [tokamak.gradient :as g]
             [tokamak.backends.core-matrix :as b])
   (:refer-clojure :exclude [compile]))
 
@@ -14,10 +15,17 @@
 (defn run-1 []
   (let [a (t/tensor :int64 2 :a)
         b (t/tensor :int64 2 :b)
-        f (t/function [a b] (t/exp (t/add 1 a b)))
+        ;;f (t/function [a b] (t/exp (t/add 1 a b)))
+        ;;f (t/function [a b] (t/add (t/named a :aa) b))
+        f (t/function [a b] (t/add (t/add 2 a) b))
+        grad (g/gradient f a)
         _ (pprint f)
-        f (b/compile f)]
-    (pprint (f (m/array [[1 1] [1 1]]) (m/array [[1 1] [1 1]])))))
+        _ (pprint grad)
+        f (b/compile f)
+        grad (b/compile grad)
+        ]
+    (pprint (f (m/array [[1 1] [1 1]]) (m/array [[1 1] [1 1]])))
+    (pprint (grad (m/array [[2 2] [2 2]]) (m/array [[1 1] [1 1]])))))
 
 (defn run-2 []
 

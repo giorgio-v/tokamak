@@ -4,7 +4,9 @@
 (defn- genkey []
   (keyword (gensym "V__")))
 
-(defn- variable
+(defn variable
+  ([name]
+   (variable name {:name name}))
   ([name m]
    (variable name m {}))
   ([name m graph]
@@ -12,15 +14,18 @@
     :graph (assoc graph name m)}))
 
 (defn- operation
-  [op args]
-  (let [name (genkey)
-        graph (apply merge (filter map? (map :graph args)))
-        op-args (mapv (fn [arg]
-                        (cond
-                          (map? arg) (:name arg)
-                          :else arg))
-                      args)]
-    (variable name {:name name :kind :op :op op :args op-args} graph)))
+  ([op args]
+   (operation op args nil))
+  ([op args name]
+   (let [name (or name (genkey))
+         graph (apply merge (filter map? (map :graph args)))
+         op-args (mapv (fn [arg]
+                         ;; TODO: check: is this still needed?
+                         (cond
+                           (map? arg) (:name arg)
+                           :else arg))
+                       args)]
+     (variable name {:name name :type :op :op op :args op-args} graph))))
 
 (defn- get-node
   ([v]
@@ -35,7 +40,6 @@
    (tensor (genkey)))
   ([dtype dim name]
    (variable name {:name name
-                   :kind :variable
                    :type :tensor
                    :dim dim
                    :dtype dtype})))
@@ -58,18 +62,17 @@
   ([dtype name]
    (tensor dtype 0 name)))
 
-(defn named
-  [v name]
-  {:name name
-   :graph (assoc (:graph v) name (:name v))})
-
 (defn function
   [args ret]
-  {:args (map :name args)
+  {:args (mapv :name args)
    :ret (:name ret)
    :graph (:graph ret)})
 
 ;; Operations
+
+(defn named
+  [v name]
+  (operation :alias [v] name))
 
 (defn add [& args]
   (operation :add args))
@@ -80,3 +83,8 @@
 (defn exp [arg]
   (operation :exp [arg]))
 
+(defn ones [arg]
+  (operation :ones [arg]))
+
+(defn zeros [arg]
+  (operation :zeros [arg]))
