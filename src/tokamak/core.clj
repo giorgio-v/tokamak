@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [vector]))
 
 (defn- genkey []
-  (keyword (gensym "V__")))
+  (keyword (gensym "VAR")))
 
 (defn variable
   ([name]

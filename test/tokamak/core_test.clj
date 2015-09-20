@@ -4,7 +4,8 @@
             [clojure.core.matrix :as m]
             [tokamak.core :as t]
             [tokamak.gradient :as g]
-            [tokamak.backends.core-matrix :as b])
+            [tokamak.backends.core-matrix :as b]
+            [tokamak.backends.eigen :as e])
   (:refer-clojure :exclude [compile]))
 
 (deftest a-test
@@ -18,14 +19,15 @@
         ;;f (t/function [a b] (t/exp (t/add 1 a b)))
         ;;f (t/function [a b] (t/add (t/named a :aa) b))
         f (t/function [a b] (t/add (t/add 2 a) b))
-        grad (g/gradient f a)
+        ;;grad (g/gradient f a)
         _ (pprint f)
-        _ (pprint grad)
-        f (b/compile f)
-        grad (b/compile grad)
+        ;;_ (pprint grad)
+        ;;f (b/compile f)
+        f (e/compile f)
+        ;;grad (b/compile grad)
         ]
-    (pprint (f (m/array [[1 1] [1 1]]) (m/array [[1 1] [1 1]])))
-    (pprint (grad (m/array [[2 2] [2 2]]) (m/array [[1 1] [1 1]])))))
+    #_(pprint (f (m/array [[1 1] [1 1]]) (m/array [[1 1] [1 1]])))
+    #_(pprint (grad (m/array [[2 2] [2 2]]) (m/array [[1 1] [1 1]])))))
 
 (defn run-2 []
 
