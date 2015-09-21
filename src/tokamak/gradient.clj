@@ -1,54 +1,44 @@
 (ns tokamak.gradient
-  (:require [tokamak.core :refer :all]
+  (:require [clojure.set :as s]
+            [tokamak.core :refer :all]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [vector]))
 
-(defn- grad-key [key wrt]
-  (keyword (str "d" (name key) "_d" (name wrt))))
+(defn grad [arg dx]
+  (operation :grad [arg dx] (keyword (str "d" (name arg) "_d" (name dx)))))
 
-(defmulti gradient* (fn [v _ _] (or (:op v) (:type v))))
+(defmulti node-gradient (fn [v _] (or (:op v) (:type v))))
 
-(defn- grad-args [args wrt]
-  (map (fn [arg]
-         (if (keyword? arg)
-           (grad-key arg wrt)
-           arg)) args))
+(defn gradient [{:keys [graph args ret]} {dx :name}]
+  (loop [grad-ret (grad ret dx)]
+    (if-let [grad-node (->> (:graph grad-ret) vals
+                            (filter #(= (:op %) :grad))
+                            first)]
+      (recur
+       (update-in grad-ret [:graph]
+                  (fn [grad-graph]
+                    (let [{grad-name :name [node-name dx] :args} grad-node
+                          {:keys [name graph]} (node-gradient (graph node-name) dx)]
+                      (merge grad-graph
+                             (graph/rename-node graph name grad-name))))))
+      (function (map graph args)
+                (update-in grad-ret [:graph] merge graph)))))
 
-(defn- map-from [ks vs]
-  (apply hash-map (interleave ks vs)))
+(defmethod node-gradient :add [{args :args} dx]
+  (apply add (map #(grad % dx) (filter keyword? args))))
 
-;; TODO: refactor gargs-all gargs, (filter keyword? args), map-from etc
-(defn gradient [{:keys [graph args ret]} {wrt :name}]
-  (let [grad-ret (grad-key ret wrt)]
-    (loop [stack [grad-ret]
-           grad-vars (hash-map grad-ret ret)
-           grad-graph graph]
-      (if (empty? stack)
-        (function (vals (select-keys graph args))
-                  {:name grad-ret :graph grad-graph})
-        (let [node (graph (grad-vars (peek stack)))
-              args (:args node)
-              gargs-all (grad-args args wrt)
-              gargs (grad-args (filter keyword? args) wrt)
-              grad* (named
-                     (gradient* node (map-from args gargs-all) wrt)
-                     (peek stack))]
-          (recur (apply conj (pop stack) gargs)
-                 (merge grad-vars (map-from gargs (filter keyword? args)))
-                 (merge grad-graph (:graph grad*))))))))
+(defmethod node-gradient :mul [{args :args} dx]
+  (let [arg-set (into #{} args)]
+    (apply add (map (fn [arg]
+                      (apply mul (conj (s/difference arg-set arg)
+                                       (grad arg dx))))
+                    (filter keyword? args)))))
 
-(defmethod gradient* :alias [{[arg] :args} dmap wrt]
-  (dmap arg))
+(defmethod node-gradient :exp [{[arg] :args} dx]
+  (mul (exp arg) (grad arg dx)))
 
-(defmethod gradient* :add [{args :args} dmap wrt]
-  (apply add (map dmap (filter keyword? args))))
-
-#_(defmethod gradient* :mul [{args :args} dmap wrt]
-    )
-
-#_(defmethod gradient* :exp [{[arg] :args} dmap wrt]
-    )
-
-(defmethod gradient* :tensor [v dmap wrt]
-  (if (= (:name v) wrt) (ones v) (zeros v)))
+(defmethod node-gradient :tensor [node dx]
+  (if (= (:name node) dx)
+    (ones node)
+    (zeros node)))
 

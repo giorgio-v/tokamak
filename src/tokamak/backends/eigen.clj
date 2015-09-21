@@ -15,15 +15,15 @@
   {:int64 "long"})
 
 (defn tensor-type
-  ([v]
-   (tensor-type (:dtype v) (:dim v)))
+  ([node]
+   (tensor-type (:dtype node) (:dim node)))
   ([dtype dim]
    (<< "Tensor<~(ctypes dtype),~{dim}>")))
 
 (defn compile-fn [args ret body]
   (let [arg-types (map tensor-type args)
         arg-vars (map (comp variable :name) args)
-        arg-str (s/join "," (map #(str %1 "& " %2) arg-types arg-vars))
+        arg-str (s/join ", " (map #(str %1 "& " %2) arg-types arg-vars))
         ;; TODO: actually infer type, this here is WRONG
         ret-type (tensor-type (first args))
         ret-var (variable (:name ret))
@@ -38,26 +38,25 @@
 ~{ret-type}& fn(~{arg-str})
 {
 ~{body-str}
-~{ret-str};
+~{ret-str}
 }
 "))
   )
 
-(defmulti compile* (fn [v] (or (:op v) (:type v))))
+(defmulti compile-node (fn [node] (or (:op node) (:type node))))
 
-(defmethod compile* :tensor
-  [v]
+(defmethod compile-node :tensor
+  [node]
   (throw (Exception. (str "Unable to resolve symbol: "
-                          (name (:name v))))))
+                          (name (:name node))))))
 
 (defn compile
-  ;; opts is for backend-specific options
   [{:keys [graph ret args given]} & [opts]]
   (let [path (->> (graph/backtrack graph ret)
                   (filter (comp not (into #{} (concat args (keys given))))))
         arguments (map graph args)
         ;; TODO: given
-        body (->> path (map graph) (map compile*))
+        body (->> path (map graph) (map compile-node))
         code (compile-fn (map graph args) (graph ret) body)
         _ (println code)
         ]
@@ -66,39 +65,33 @@
       (compiled-fn (apply hash-map (interleave args fn-args))))))
 
 
-(defmethod compile* :alias
-  [v]
-  (let [lhs (variable (:name v))
-        rhs (variable (first (:args v)))]
+(defmethod compile-node :add
+  [node]
+  (let [lhs (variable (:name node))
+        rhs (s/join "+" (map variable (:args node)))]
     (<< "auto ~{lhs} = ~{rhs};")))
 
-(defmethod compile* :add
-  [v]
-  (let [lhs (variable (:name v))
-        rhs (s/join "+" (map variable (:args v)))]
+(defmethod compile-node :mul
+  [node]
+  (let [lhs (variable (:name node))
+        rhs (s/join "*" (map variable (:args node)))]
     (<< "auto ~{lhs} = ~{rhs};")))
 
-(defmethod compile* :mul
-  [v]
-  (let [lhs (variable (:name v))
-        rhs (s/join "*" (map variable (:args v)))]
-    (<< "auto ~{lhs} = ~{rhs};")))
-
-(defmethod compile* :exp
-  [v]
-  (let [lhs (variable (:name v))
-        arg (variable (first (:args v)))]
+(defmethod compile-node :exp
+  [node]
+  (let [lhs (variable (:name node))
+        arg (variable (first (:args node)))]
     (<< "auto ~{lhs} = ~{arg}.exp();")))
 
-(defmethod compile* :ones
-  [v]
-  (let [lhs (variable (:name v))
-        arg (variable (first (:args v)))]
+(defmethod compile-node :ones
+  [node]
+  (let [lhs (variable (:name node))
+        arg (variable (first (:args node)))]
     (<< "auto ~{lhs} = ~{arg}.ones();")))
 
-(defmethod compile* :zeros
-  [v]
-  (let [lhs (variable (:name v))
-        arg (variable (first (:args v)))]
+(defmethod compile-node :zeros
+  [node]
+  (let [lhs (variable (:name node))
+        arg (variable (first (:args node)))]
     (<< "auto ~{lhs} = ~{arg}.zeros();")))
 

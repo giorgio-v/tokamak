@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [vector]))
 
 (defn- genkey []
-  (keyword (gensym "VAR")))
+  (keyword (gensym "V")))
 
 (defn variable
   ([name]
@@ -13,25 +13,14 @@
    {:name name
     :graph (assoc graph name m)}))
 
-(defn- operation
+(defn operation
   ([op args]
    (operation op args nil))
   ([op args name]
    (let [name (or name (genkey))
-         graph (apply merge (filter map? (map :graph args)))
-         op-args (mapv (fn [arg]
-                         ;; TODO: check: is this still needed?
-                         (cond
-                           (map? arg) (:name arg)
-                           :else arg))
-                       args)]
+         graph (apply merge (map :graph args))
+         op-args (mapv (fn [arg] (or (:name arg) arg)) args)]
      (variable name {:name name :type :op :op op :args op-args} graph))))
-
-(defn- get-node
-  ([v]
-   (get-node v (:name v)))
-  ([v k]
-   (get (:graph v) k)))
 
 ;; Public API
 
@@ -69,10 +58,6 @@
    :graph (:graph ret)})
 
 ;; Operations
-
-(defn named
-  [v name]
-  (operation :alias [v] name))
 
 (defn add [& args]
   (operation :add args))

@@ -6,18 +6,17 @@
 (defn- keyword->symbol [k]
   (symbol (name k)))
 
-(defn- args->vars [v]
+(defn- vars [v]
   (map #(if (keyword? %) (keyword->symbol %) %) (:args v)))
 
-(defmulti compile* (fn [v] (or (:op v) (:type v))))
+(defmulti compile-node (fn [node] (or (:op node) (:type node))))
 
-(defmethod compile* :tensor
-  [v]
+(defmethod compile-node :tensor
+  [node]
   (throw (Exception. (str "Unable to resolve symbol: "
-                          (name (:name v))))))
+                          (name (:name node))))))
 
 (defn compile
-  ;; opts is for backend-specific options
   [{:keys [graph ret args given]} & [opts]]
   (let [path (->> (graph/backtrack graph ret)
                   (filter (comp not (into #{} (concat args (keys given))))))
@@ -26,36 +25,30 @@
                           (concat
                            (mapcat (juxt (comp keyword->symbol key) val) given)
                            (interleave (map keyword->symbol path)
-                                       (->> path (map graph) (map compile*)))))
+                                       (->> path (map graph) (map compile-node)))))
                      ;; Add updates to memory atom before returning
                      ~(keyword->symbol ret)))
         _ (clojure.pprint/pprint fn-form)
         compiled-fn (eval fn-form)]
-    ;; TODO: possibly avoid this outer function, just build the args
-    ;; thing into the inner one
     (fn [& fn-args]
       (compiled-fn (apply hash-map (interleave args fn-args))))))
 
-(defmethod compile* :alias
-  [v]
-  (keyword->symbol (first (:args v))))
+(defmethod compile-node :add
+  [node]
+  `(m/add ~@(vars node)))
 
-(defmethod compile* :add
-  [v]
-  `(m/add ~@(args->vars v)))
+(defmethod compile-node :mul
+  [node]
+  `(m/mul ~@(vars node)))
 
-(defmethod compile* :mul
-  [v]
-  `(m/mul ~@(args->vars v)))
+(defmethod compile-node :exp
+  [node]
+  `(m/emap #(Math/exp %) ~@(vars node)))
 
-(defmethod compile* :exp
-  [v]
-  `(m/emap #(Math/exp %) ~@(args->vars v)))
+(defmethod compile-node :ones
+  [node]
+  `(m/fill ~@(vars node) 1.0))
 
-(defmethod compile* :ones
-  [v]
-  `(m/fill ~@(args->vars v) 1.0))
-
-(defmethod compile* :zeros
-  [v]
-  `(m/fill ~@(args->vars v) 0.0))
+(defmethod compile-node :zeros
+  [node]
+  `(m/fill ~@(vars node) 0.0))

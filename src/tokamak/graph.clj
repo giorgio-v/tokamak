@@ -14,6 +14,11 @@
            out
            (:args v))) {})))
 
+(defn rename-node
+  [graph name new-name]
+  (-> graph
+      (assoc-in [name :name] new-name)
+      (s/rename-keys {name new-name})))
 
 (defn reach
   [graph from]
