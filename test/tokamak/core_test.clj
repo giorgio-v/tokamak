@@ -13,8 +13,8 @@
     (is (= 0 1))))
 
 (defn run-1 []
-  (let [a (t/tensor :int64 2 :a)
-        b (t/tensor :int64 2 :b)
+  (let [a (t/tensor :int64 2)
+        b (t/tensor :int64 2)
         ;;f (t/function [a b] (t/add (t/add 2 a) b))
         f (t/function [a b] (t/exp (t/add a b)))
         grad (g/gradient f a)
