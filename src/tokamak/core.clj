@@ -5,8 +5,6 @@
   (keyword (gensym "V")))
 
 (defn variable
-  ([name]
-   (variable name {:name name}))
   ([name m]
    (variable name m {}))
   ([name m graph]
@@ -26,7 +24,7 @@
 
 (defn tensor
   ([dtype dim]
-   (tensor (genkey)))
+   (tensor dtype dim (genkey)))
   ([dtype dim name]
    (variable name {:name name
                    :type :tensor
@@ -34,22 +32,16 @@
                    :dtype dtype})))
 
 (defn matrix
-  ([dtype]
-   (tensor dtype 2))
-  ([dtype name]
-   (tensor dtype 2 name)))
+  [dtype]
+  (tensor dtype 2))
 
 (defn vector
-  ([dtype]
-   (tensor dtype 1))
-  ([dtype name]
-   (tensor dtype 1 name)))
+  [dtype]
+  (tensor dtype 1))
 
 (defn scalar
-  ([dtype]
-   (tensor dtype 0))
-  ([dtype name]
-   (tensor dtype 0 name)))
+  [dtype]
+  (tensor dtype 0))
 
 (defn function
   [args ret]
