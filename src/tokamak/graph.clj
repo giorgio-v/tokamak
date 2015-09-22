@@ -28,7 +28,6 @@
       (let [args (->> (map graph nodes)
                       (map :args)
                       flatten
-                      (filter identity)
                       (filter keyword?)
                       (into #{}))
             args (s/difference args reached)
@@ -55,7 +54,6 @@
       (let [args (->> (map graph nodes)
                       (map :args)
                       flatten
-                      (filter identity)
                       (filter keyword?)
                       (into #{}))
             args (s/difference args visited)
