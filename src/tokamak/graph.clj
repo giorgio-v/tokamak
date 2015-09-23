@@ -1,18 +1,19 @@
 (ns tokamak.graph
+  (:require [tokamak.core :refer :all])
   (:require [clojure.set :as s]))
 
 (defn forward-edges
   [graph]
   (->> graph
        (map val)
-       (filter #(= (:type %) :op))
+       (filter #(extends? IOp (type %)))
        (reduce
-        (fn [out v]
+        (fn [out op]
           (reduce
            (fn [out arg]
-             (update-in out [arg] conj (:name v)))
+             (update-in out [arg] conj (:name op)))
            out
-           (:args v))) {})))
+           (:args op))) {})))
 
 (defn rename-node
   [graph name new-name]
@@ -28,6 +29,7 @@
       (let [args (->> (map graph nodes)
                       (map :args)
                       flatten
+                      ;; TODO: replace keyword?
                       (filter keyword?)
                       (into #{}))
             args (s/difference args reached)
@@ -54,6 +56,7 @@
       (let [args (->> (map graph nodes)
                       (map :args)
                       flatten
+                      ;; TODO: replace keyword
                       (filter keyword?)
                       (into #{}))
             args (s/difference args visited)

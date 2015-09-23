@@ -1,67 +1,70 @@
-(ns tokamak.core
-  (:refer-clojure :exclude [vector]))
+(ns tokamak.core)
 
-(defn- genkey []
+(defn genkey []
   (keyword (gensym "V")))
 
+(defrecord Tensor [name dim dtype])
+
+(defrecord Variable [name graph])
+
+(defrecord Function [args ret graph])
+
+(defprotocol IOp)
+
+(defrecord Add [name args] IOp)
+
+(defrecord Mul [name args] IOp)
+
+(defrecord Exp [name args] IOp)
+
+(defrecord Ones [name args] IOp)
+
+(defrecord Zeros [name args] IOp)
+
+
+(defprotocol Foo
+  (foo [_]))
+
+(extend-protocol Foo
+  Tensor
+  (foo [_] :a))
+
 (defn variable
-  ([name m]
-   (variable name m {}))
-  ([name m graph]
-   {:name name
-    :graph (assoc graph name m)}))
+  [name v graph]
+  (Variable. name (assoc graph name v)))
 
 (defn operation
-  ([op args]
-   (operation op args nil))
-  ([op args name]
-   (let [name (or name (genkey))
-         graph (apply merge (map :graph args))
-         op-args (mapv (fn [arg] (or (:name arg) arg)) args)]
-     (variable name {:name name :type :op :op op :args op-args} graph))))
-
-;; Public API
+  ([op-fn args]
+   (operation op-fn (genkey) args))
+  ([op-fn args name]
+   (variable name
+             (op-fn name (mapv :name args))
+             (apply merge (map :graph args)))))
 
 (defn tensor
   ([dtype dim]
    (tensor dtype dim (genkey)))
   ([dtype dim name]
-   (variable name {:name name
-                   :type :tensor
-                   :dim dim
-                   :dtype dtype})))
-
-(defn matrix
-  [dtype]
-  (tensor dtype 2))
-
-(defn vector
-  [dtype]
-  (tensor dtype 1))
-
-(defn scalar
-  [dtype]
-  (tensor dtype 0))
+   (variable name (Tensor. name dim dtype) {})))
 
 (defn function
   [args ret]
-  {:args (mapv :name args)
-   :ret (:name ret)
-   :graph (:graph ret)})
-
-;; Operations
+  (Function. (mapv :name args)
+             (:name ret)
+             (:graph ret)))
 
 (defn add [& args]
-  (operation :add args))
+  (operation ->Add args))
 
 (defn mul [& args]
-  (operation :mul args))
+  (operation ->Mul args))
 
 (defn exp [arg]
-  (operation :exp [arg]))
+  (operation ->Exp [arg]))
 
 (defn ones [arg]
-  (operation :ones [arg]))
+  (operation ->Ones [arg]))
 
 (defn zeros [arg]
-  (operation :zeros [arg]))
+  (operation ->Zeros [arg]))
+

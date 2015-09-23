@@ -1,10 +1,11 @@
 (ns tokamak.backends.eigen
   (:require [clojure.string :as s]
             [clojure.core.strint :refer [<<]]
+            [tokamak.core :refer :all]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [compile]))
 
-(defn- variable [arg]
+(defn- var-name [arg]
   (if (keyword? arg) (name arg) arg))
 
 (defn- indent [n body]
@@ -22,11 +23,11 @@
 
 (defn compile-fn [args ret body]
   (let [arg-types (map tensor-type args)
-        arg-vars (map (comp variable :name) args)
+        arg-vars (map (comp var-name :name) args)
         arg-str (s/join ", " (map #(str %1 "& " %2) arg-types arg-vars))
         ;; TODO: actually infer type, this here is WRONG
         ret-type (tensor-type (first args))
-        ret-var (variable (:name ret))
+        ret-var (var-name (:name ret))
         ret-str (<< "  return ~{ret-var};")
         body-str (s/join "\n" (indent 2 body))]
     ;; TODO: we need an explicit var to realize the computation.
@@ -43,12 +44,8 @@
 "))
   )
 
-(defmulti compile-node (fn [node] (or (:op node) (:type node))))
-
-(defmethod compile-node :tensor
-  [node]
-  (throw (Exception. (str "Unable to resolve symbol: "
-                          (name (:name node))))))
+(defprotocol IEigen
+  (-compile [_]))
 
 (defn compile
   [{:keys [graph ret args given]} & [opts]]
@@ -56,7 +53,7 @@
                   (filter (comp not (into #{} (concat args (keys given))))))
         arguments (map graph args)
         ;; TODO: given
-        body (->> path (map graph) (map compile-node))
+        body (->> path (map graph) (map -compile))
         code (compile-fn (map graph args) (graph ret) body)
         _ (println code)
         ]
@@ -65,33 +62,40 @@
       (compiled-fn (apply hash-map (interleave args fn-args))))))
 
 
-(defmethod compile-node :add
-  [node]
-  (let [lhs (variable (:name node))
-        rhs (s/join "+" (map variable (:args node)))]
-    (<< "auto ~{lhs} = ~{rhs};")))
+(extend-protocol IEigen
 
-(defmethod compile-node :mul
-  [node]
-  (let [lhs (variable (:name node))
-        rhs (s/join "*" (map variable (:args node)))]
-    (<< "auto ~{lhs} = ~{rhs};")))
+  Add
+  (-compile [this]
+    (let [lhs (var-name (:name this))
+          rhs (s/join "+" (map var-name (:args this)))]
+      (<< "auto ~{lhs} = ~{rhs};")))
 
-(defmethod compile-node :exp
-  [node]
-  (let [lhs (variable (:name node))
-        arg (variable (first (:args node)))]
-    (<< "auto ~{lhs} = ~{arg}.exp();")))
+  Mul
+  (-compile [this]
+    (let [lhs (var-name (:name this))
+          rhs (s/join "*" (map var-name (:args this)))]
+      (<< "auto ~{lhs} = ~{rhs};")))
 
-(defmethod compile-node :ones
-  [node]
-  (let [lhs (variable (:name node))
-        arg (variable (first (:args node)))]
-    (<< "auto ~{lhs} = ~{arg}.ones();")))
+  Exp
+  (-compile [this]
+    (let [lhs (var-name (:name this))
+          arg (var-name (first (:args this)))]
+      (<< "auto ~{lhs} = ~{arg}.exp();")))
 
-(defmethod compile-node :zeros
-  [node]
-  (let [lhs (variable (:name node))
-        arg (variable (first (:args node)))]
-    (<< "auto ~{lhs} = ~{arg}.zeros();")))
+  Ones
+  (-compile [this]
+    (let [lhs (var-name (:name this))
+          arg (var-name (first (:args this)))]
+      (<< "auto ~{lhs} = ~{arg}.ones();")))
+
+  Zeros
+  (-compile [this]
+    (let [lhs (var-name (:name this))
+          arg (var-name (first (:args this)))]
+      (<< "auto ~{lhs} = ~{arg}.zeros();")))
+
+  Tensor
+  (-compile [this]
+    (throw (Exception. (str "Unable to resolve symbol: "
+                            (name (:name node)))))))
 

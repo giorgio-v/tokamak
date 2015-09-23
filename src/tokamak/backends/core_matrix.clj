@@ -1,5 +1,6 @@
 (ns tokamak.backends.core-matrix
   (:require [clojure.core.matrix :as m]
+            [tokamak.core :refer :all]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [compile]))
 
@@ -9,12 +10,8 @@
 (defn- vars [v]
   (map #(if (keyword? %) (keyword->symbol %) %) (:args v)))
 
-(defmulti compile-node (fn [node] (or (:op node) (:type node))))
-
-(defmethod compile-node :tensor
-  [node]
-  (throw (Exception. (str "Unable to resolve symbol: "
-                          (name (:name node))))))
+(defprotocol ICoreMatrix
+  (-compile [_]))
 
 (defn compile
   [{:keys [graph ret args given]} & [opts]]
@@ -33,22 +30,32 @@
     (fn [& fn-args]
       (compiled-fn (apply hash-map (interleave args fn-args))))))
 
-(defmethod compile-node :add
-  [node]
-  `(m/add ~@(vars node)))
 
-(defmethod compile-node :mul
-  [node]
-  `(m/mul ~@(vars node)))
+(extend-protocol ICoreMatrix
 
-(defmethod compile-node :exp
-  [node]
-  `(m/emap #(Math/exp %) ~@(vars node)))
+  Add
+  (-compile [this]
+    `(m/add ~@(vars this)))
 
-(defmethod compile-node :ones
-  [node]
-  `(m/fill ~@(vars node) 1.0))
+  Mul
+  (-compile [this]
+    `(m/mul ~@(vars node)))
 
-(defmethod compile-node :zeros
-  [node]
-  `(m/fill ~@(vars node) 0.0))
+  Exp
+  (-compile [this]
+    `(m/emap #(Math/exp %) ~@(vars node)))
+
+  Ones
+  (-compile [this]
+    `(m/fill ~@(vars node) 1.0))
+
+  Zeros
+  (-compile [this]
+    `(m/fill ~@(vars node) 0.0))
+
+  Tensor
+  (-compile [this]
+    (throw (Exception. (str "Unable to resolve symbol: "
+                            (name (:name this)))))))
+
+
