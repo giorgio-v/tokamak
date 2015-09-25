@@ -5,8 +5,7 @@
             [tokamak.core :as t]
             [tokamak.gradient :as g]
             [tokamak.backends.core-matrix :as b]
-            [tokamak.backends.eigen :as e])
-  (:refer-clojure :exclude [compile]))
+            [tokamak.backends.eigen :as e]))
 
 (deftest a-test
   (testing "FIXME, I fail."

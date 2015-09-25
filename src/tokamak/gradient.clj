@@ -2,8 +2,7 @@
   (:require [clojure.set :as s]
             [tokamak.core :refer :all]
             [tokamak.ops :refer [IOp]]
-            [tokamak.graph :as graph])
-  (:refer-clojure :exclude [vector]))
+            [tokamak.graph :as graph]))
 
 (defprotocol IDiff
   (-gradient [this dx]))
