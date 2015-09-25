@@ -1,4 +1,5 @@
-(ns tokamak.core)
+(ns tokamak.core
+  (:require [tokamak.ops :refer :all]))
 
 (defn genkey []
   (keyword (gensym "V")))
@@ -9,36 +10,16 @@
 
 (defrecord Function [args ret graph])
 
-(defprotocol IOp)
-
-(defrecord Add [name args] IOp)
-
-(defrecord Mul [name args] IOp)
-
-(defrecord Exp [name args] IOp)
-
-(defrecord Ones [name args] IOp)
-
-(defrecord Zeros [name args] IOp)
-
-
-(defprotocol Foo
-  (foo [_]))
-
-(extend-protocol Foo
-  Tensor
-  (foo [_] :a))
-
 (defn variable
   [name v graph]
   (Variable. name (assoc graph name v)))
 
 (defn operation
   ([op-fn args]
-   (operation op-fn (genkey) args))
+   (operation op-fn args (genkey)))
   ([op-fn args name]
    (variable name
-             (op-fn name (mapv :name args))
+             (op-fn name (mapv #(or (:name %) %) args))
              (apply merge (map :graph args)))))
 
 (defn tensor

@@ -1,16 +1,18 @@
 (ns tokamak.gradient
   (:require [clojure.set :as s]
             [tokamak.core :refer :all]
+            [tokamak.ops :refer [IOp]]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [vector]))
 
 (defprotocol IDiff
   (-gradient [this dx]))
 
-(deftype Grad [name args] IOp)
+(defrecord Grad [name args] IOp)
 
 (defn grad [arg dx]
-  (operation ->Grad [arg dx] (keyword (str "d" (name arg) "_d" (name dx)))))
+  (operation ->Grad [arg dx]
+             (keyword (str "d" (name arg) "_d" (name dx)))))
 
 (defn gradient [{:keys [graph args ret]} {dx :name}]
   (loop [grad-ret (grad ret dx)]
@@ -29,27 +31,27 @@
 
 (extend-protocol IDiff
 
-  Tensor
+  tokamak.core.Tensor
   (-gradient [this dx]
-    (if (= (-name this) dx)
-      (ones node)
-      (zeros node)))
+    (if (= (:name this) dx)
+      (ones this)
+      (zeros this)))
 
-  Add
+  tokamak.ops.Add
   (-gradient [this dx]
     ;; todo: replace keyword?
-    (apply add (map #(grad % dx) (filter keyword? (-args this)))))
+    (apply add (map #(grad % dx) (filter keyword? (:args this)))))
 
-  Mul
+  tokamak.ops.Mul
   (-gradient [this dx]
-    (let [arg-set (into #{} (-args this))]
+    (let [arg-set (into #{} (:args this))]
       (apply add (map (fn [arg]
                         (apply mul (conj (s/difference arg-set arg)
                                          (grad arg dx))))
-                      (filter keyword? (-args this))))))
+                      (filter keyword? (:args this))))))
 
-  Exp
+  tokamak.ops.Exp
   (-gradient [this dx]
-    (let [[arg] (-args this)]
+    (let [[arg] (:args this)]
       (mul (exp arg) (grad arg dx)))))
 

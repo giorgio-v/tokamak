@@ -1,6 +1,7 @@
 (ns tokamak.graph
-  (:require [tokamak.core :refer :all])
-  (:require [clojure.set :as s]))
+  (:require [tokamak.core :refer :all]
+            [tokamak.ops :refer [IOp]]
+            [clojure.set :as s]))
 
 (defn forward-edges
   [graph]

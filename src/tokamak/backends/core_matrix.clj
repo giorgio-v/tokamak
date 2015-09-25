@@ -1,6 +1,5 @@
 (ns tokamak.backends.core-matrix
   (:require [clojure.core.matrix :as m]
-            [tokamak.core :refer :all]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [compile]))
 
@@ -22,7 +21,7 @@
                           (concat
                            (mapcat (juxt (comp keyword->symbol key) val) given)
                            (interleave (map keyword->symbol path)
-                                       (->> path (map graph) (map compile-node)))))
+                                       (->> path (map graph) (map -compile)))))
                      ;; Add updates to memory atom before returning
                      ~(keyword->symbol ret)))
         _ (clojure.pprint/pprint fn-form)
@@ -33,27 +32,27 @@
 
 (extend-protocol ICoreMatrix
 
-  Add
+  tokamak.ops.Add
   (-compile [this]
     `(m/add ~@(vars this)))
 
-  Mul
+  tokamak.ops.Mul
   (-compile [this]
-    `(m/mul ~@(vars node)))
+    `(m/mul ~@(vars this)))
 
-  Exp
+  tokamak.ops.Exp
   (-compile [this]
-    `(m/emap #(Math/exp %) ~@(vars node)))
+    `(m/emap #(Math/exp %) ~@(vars this)))
 
-  Ones
+  tokamak.ops.Ones
   (-compile [this]
-    `(m/fill ~@(vars node) 1.0))
+    `(m/fill ~@(vars this) 1.0))
 
-  Zeros
+  tokamak.ops.Zeros
   (-compile [this]
-    `(m/fill ~@(vars node) 0.0))
+    `(m/fill ~@(vars this) 0.0))
 
-  Tensor
+  tokamak.core.Tensor
   (-compile [this]
     (throw (Exception. (str "Unable to resolve symbol: "
                             (name (:name this)))))))

@@ -1,7 +1,6 @@
 (ns tokamak.backends.eigen
   (:require [clojure.string :as s]
             [clojure.core.strint :refer [<<]]
-            [tokamak.core :refer :all]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [compile]))
 
@@ -64,38 +63,38 @@
 
 (extend-protocol IEigen
 
-  Add
+  tokamak.ops.Add
   (-compile [this]
     (let [lhs (var-name (:name this))
           rhs (s/join "+" (map var-name (:args this)))]
       (<< "auto ~{lhs} = ~{rhs};")))
 
-  Mul
+  tokamak.ops.Mul
   (-compile [this]
     (let [lhs (var-name (:name this))
           rhs (s/join "*" (map var-name (:args this)))]
       (<< "auto ~{lhs} = ~{rhs};")))
 
-  Exp
+  tokamak.ops.Exp
   (-compile [this]
     (let [lhs (var-name (:name this))
           arg (var-name (first (:args this)))]
       (<< "auto ~{lhs} = ~{arg}.exp();")))
 
-  Ones
+  tokamak.ops.Ones
   (-compile [this]
     (let [lhs (var-name (:name this))
           arg (var-name (first (:args this)))]
       (<< "auto ~{lhs} = ~{arg}.ones();")))
 
-  Zeros
+  tokamak.ops.Zeros
   (-compile [this]
     (let [lhs (var-name (:name this))
           arg (var-name (first (:args this)))]
       (<< "auto ~{lhs} = ~{arg}.zeros();")))
 
-  Tensor
+  tokamak.core.Tensor
   (-compile [this]
     (throw (Exception. (str "Unable to resolve symbol: "
-                            (name (:name node)))))))
+                            (name (:name this)))))))
 
