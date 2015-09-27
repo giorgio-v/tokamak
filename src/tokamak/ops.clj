@@ -134,7 +134,7 @@
   (-infer-shape [_ _] (assert false))
   (-infer-dtype [_ _] (assert false)))
 
-(defrecord Fill [x shape])
+(defrecord Fill [x value])
 (extend Fill IOp (default-op-fns :x))
 
 (defrecord Flatten [x]
@@ -300,7 +300,6 @@
 (defn exp [arg]
   (operation ->Exp arg))
 
-(comment
 (defn abs [x]
   (operation ->Abs x))
 
@@ -475,4 +474,3 @@
 (defn dim-shuffle [x pattern]
   (operation ->DimShuffle x pattern))
 
-)
