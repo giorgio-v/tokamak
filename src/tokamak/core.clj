@@ -1,32 +1,48 @@
-(ns tokamak.core
-  (:require [tokamak.ops :refer :all]))
+(ns tokamak.core)
 
 (defn genkey []
   (keyword (gensym "V")))
 
-(defrecord Tensor [name dim dtype])
+(defprotocol ITensor
+  (-dim [_]))
+
+(defprotocol IFixedTensor
+  (-shape [_]))
+
+(defrecord Tensor [name dim dtype]
+  ITensor
+  (-dim [_] dim)
+  (-dtype [_] dtype))
+
+(defrecord FixedTensor [name shape dtype]
+  ITensor
+  (-dim [_] (count shape))
+  (-dtype [_] dtype)
+  IFixedTensor
+  (-shape [_] shape))
+
+(defrecord Constant [name value])
 
 (defrecord Variable [name graph])
 
 (defrecord Function [args ret graph])
 
 (defn variable
-  [name v graph]
-  (Variable. name (assoc graph name v)))
+  [v graph]
+  (Variable. (:name v)
+             (assoc graph (:name v) v)))
 
-(defn operation
-  ([op-fn args]
-   (operation op-fn args (genkey)))
-  ([op-fn args name]
-   (variable name
-             (op-fn name (mapv #(or (:name %) %) args))
-             (apply merge (map :graph args)))))
+(defn constant
+  [value]
+  (variable (Constant. (genkey) value) {}))
 
 (defn tensor
-  ([dtype dim]
-   (tensor dtype dim (genkey)))
-  ([dtype dim name]
-   (variable name (Tensor. name dim dtype) {})))
+  [dtype dim]
+  (variable (Tensor. (genkey) dim dtype) {}))
+
+(defn fixed-tensor
+  [dtype shape]
+  (variable (FixedTensor. (genkey) shape dtype) {}))
 
 (defn function
   [args ret]
@@ -34,18 +50,6 @@
              (:name ret)
              (:graph ret)))
 
-(defn add [& args]
-  (operation ->Add args))
-
-(defn mul [& args]
-  (operation ->Mul args))
-
-(defn exp [arg]
-  (operation ->Exp [arg]))
-
-(defn ones [arg]
-  (operation ->Ones [arg]))
-
-(defn zeros [arg]
-  (operation ->Zeros [arg]))
-
+(defn infer-shape
+  [variable]
+  )

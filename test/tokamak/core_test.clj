@@ -2,8 +2,9 @@
   (:require [clojure.test :refer :all]
             [fipp.clojure :refer [pprint]]
             [clojure.core.matrix :as m]
-            [tokamak.core :as t]
-            [tokamak.gradient :as g]
+            [tokamak.core :refer :all]
+            [tokamak.ops :refer :all]
+            [tokamak.gradient :refer :all]
             [tokamak.backends.core-matrix :as b]
             [tokamak.backends.eigen :as e]))
 
@@ -12,17 +13,16 @@
     (is (= 0 1))))
 
 (defn run-1 []
-  (let [a (t/tensor :int64 2)
-        b (t/tensor :int64 2)
-        ;;f (t/function [a b] (t/add (t/add 2 a) b))
-        f (t/function [a b] (t/exp (t/add a b)))
-        grad (g/gradient f a)
-        ;;_ (pprint f)
-        ;;_ (pprint grad)
+  (let [a (tensor :int64 2)
+        b (tensor :int64 2)
+        f (function [a b] (exp (add a b)))
+        grad (gradient f a)
+        _ (pprint f)
+        _ (pprint grad)
         f* (b/compile f)
         grad* (b/compile grad)
-        ;;f (e/compile f)
-        ;;grad (e/compile grad)
+        f** (e/compile f)
+        grad** (e/compile grad)
         ]
     (pprint (f* (m/array [[1 1] [1 1]]) (m/array [[1 1] [1 1]])))
     (pprint (grad* (m/array [[2 2] [2 2]]) (m/array [[1 1] [1 1]])))))

@@ -1,6 +1,7 @@
 (ns tokamak.backends.eigen
   (:require [clojure.string :as s]
             [clojure.core.strint :refer [<<]]
+            [tokamak.ops :as ops]
             [tokamak.graph :as graph])
   (:refer-clojure :exclude [compile]))
 
@@ -63,38 +64,46 @@
 
 (extend-protocol IEigen
 
+  tokamak.core.Tensor
+  (-compile [this]
+    (throw (Exception. (str "Unable to resolve symbol: "
+                            (name (:name this))))))
+
+  tokamak.core.Constant
+  (-compile [this]
+    (let [lhs (var-name (:name this))
+          rhs (str (:value this))]
+      (<< "auto ~{lhs} = ~{rhs};")))
+
   tokamak.ops.Add
   (-compile [this]
     (let [lhs (var-name (:name this))
-          rhs (s/join "+" (map var-name (:args this)))]
+          rhs (s/join " + " (map var-name (ops/-args this)))]
       (<< "auto ~{lhs} = ~{rhs};")))
 
   tokamak.ops.Mul
   (-compile [this]
     (let [lhs (var-name (:name this))
-          rhs (s/join "*" (map var-name (:args this)))]
+          rhs (s/join " * " (map var-name (ops/-args this)))]
       (<< "auto ~{lhs} = ~{rhs};")))
 
   tokamak.ops.Exp
   (-compile [this]
     (let [lhs (var-name (:name this))
-          arg (var-name (first (:args this)))]
+          arg (var-name (:x this))]
       (<< "auto ~{lhs} = ~{arg}.exp();")))
 
-  tokamak.ops.Ones
-  (-compile [this]
-    (let [lhs (var-name (:name this))
-          arg (var-name (first (:args this)))]
-      (<< "auto ~{lhs} = ~{arg}.ones();")))
+  ;;tokamak.ops.Ones
+  ;;(-compile [this]
+  ;;  (let [lhs (var-name (:name this))
+  ;;        arg (var-name (first (:args this)))]
+  ;;    (<< "auto ~{lhs} = ~{arg}.ones();")))
 
-  tokamak.ops.Zeros
-  (-compile [this]
-    (let [lhs (var-name (:name this))
-          arg (var-name (first (:args this)))]
-      (<< "auto ~{lhs} = ~{arg}.zeros();")))
+  ;;tokamak.ops.Zeros
+  ;;(-compile [this]
+  ;;  (let [lhs (var-name (:name this))
+  ;;        arg (var-name (first (:args this)))]
+  ;;    (<< "auto ~{lhs} = ~{arg}.zeros();")))
 
-  tokamak.core.Tensor
-  (-compile [this]
-    (throw (Exception. (str "Unable to resolve symbol: "
-                            (name (:name this)))))))
+  )
 
